@@ -694,13 +694,27 @@ function init(){
     document.getElementById('user-sub').textContent='ID: '+user.id;
   }
 
+  // Фото профиля — круглое
+  const face=document.getElementById('char-face');
+  if(photoUrl){
+    face.style.padding='0';face.style.overflow='hidden';
+    face.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
+  } else if(user){
+    // Инициалы как фолбэк
+    const initials=(user.first_name||'?')[0].toUpperCase();
+    face.style.fontSize='36px';face.style.fontFamily='Unbounded,sans-serif';face.style.fontWeight='700';
+    face.textContent=initials;
+  }
+
   const sp=decodeURIComponent(window.location.hash.slice(1)||'');
-  let plan='free',used=0,limit=2,refs=0,expires='',refcode='DEMO123',botname='KlingBot';
+  let plan='free',used=0,limit=2,refs=0,expires='',refcode='DEMO123',botname='KlingBot',photoUrl='';
   if(sp&&sp.includes(':')){
     try{
       const p=sp.split(':');
       plan=p[0]||'free';used=+p[1]||0;limit=+p[2]||2;
       refs=+p[3]||0;expires=p[4]||'';refcode=p[5]||'DEMO123';botname=p[6]||'KlingBot';
+      // photo_url может содержать двоеточия (https://...), берём всё после 7го элемента
+      if(p.length > 7) photoUrl=decodeURIComponent(p.slice(7).join(':'));
     }catch(e){}
   }
 
