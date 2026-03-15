@@ -674,88 +674,144 @@ html,body{height:100%;overflow:hidden;background:#08080f;color:#fff;font-family:
 <div class="toast" id="toast">Скопировано</div>
 
 <script>
-const tg=window.Telegram?.WebApp;
-if(tg){tg.ready();tg.expand();tg.setHeaderColor&&tg.setHeaderColor('#08080f');tg.setBackgroundColor&&tg.setBackgroundColor('#08080f')}
-
-function nav(name){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  document.getElementById('nav-'+name).classList.add('active');
-  const pg=document.getElementById('page-'+name);
-  pg.querySelectorAll('.fu').forEach(el=>{el.style.animation='none';el.offsetHeight;el.style.animation=''});
-  pg.scrollTop=0;
+const tg = window.Telegram?.WebApp;
+if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor && tg.setHeaderColor('#08080f');
+    tg.setBackgroundColor && tg.setBackgroundColor('#08080f');
 }
 
-function init(){
-  const user=tg?.initDataUnsafe?.user;
-  if(user){
-    document.getElementById('user-name').textContent=(user.first_name||'')+(user.last_name?' '+user.last_name:'');
-    document.getElementById('user-sub').textContent='ID: '+user.id;
-  }
-
-  // Фото профиля — круглое
-  const face=document.getElementById('char-face');
-  if(photoUrl){
-    face.style.padding='0';face.style.overflow='hidden';
-    face.innerHTML=`<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
-  } else if(user){
-    // Инициалы как фолбэк
-    const initials=(user.first_name||'?')[0].toUpperCase();
-    face.style.fontSize='36px';face.style.fontFamily='Unbounded,sans-serif';face.style.fontWeight='700';
-    face.textContent=initials;
-  }
-
-  const sp=decodeURIComponent(window.location.hash.slice(1)||'');
-  let plan='free',used=0,limit=2,refs=0,expires='',refcode='DEMO123',botname='KlingBot',photoUrl='';
-  if(sp&&sp.includes(':')){
-    try{
-      const p=sp.split(':');
-      plan=p[0]||'free';used=+p[1]||0;limit=+p[2]||2;
-      refs=+p[3]||0;expires=p[4]||'';refcode=p[5]||'DEMO123';botname=p[6]||'KlingBot';
-      // photo_url может содержать двоеточия (https://...), берём всё после 7го элемента
-      if(p.length > 7) photoUrl=decodeURIComponent(p.slice(7).join(':'));
-    }catch(e){}
-  }
-
-  // Plan chip
-  const chip=document.getElementById('plan-chip');
-  const names={free:'🆓 Free',basic:'⚡ Basic',pro:'🚀 Pro',unlimited:'♾️ Unlimited'};
-  const cls={free:'chip-free',basic:'chip-basic',pro:'chip-pro',unlimited:'chip-unlimited'};
-  chip.textContent=names[plan]||names.free;
-  chip.className='plan-chip '+(cls[plan]||cls.free);
-
-  // Stats
-  const left=plan==='unlimited'?'∞':Math.max(0,limit-used);
-  document.getElementById('gen-left').textContent=left;
-  document.getElementById('stat-limit').textContent=plan==='unlimited'?'∞':limit;
-  document.getElementById('stat-used').textContent=used;
-  document.getElementById('stat-refs').textContent=refs;
-  document.getElementById('ref-count-badge').textContent='+'+refs+' ген.';
-
-  // Progress
-  const pct=plan==='unlimited'?100:(limit>0?Math.round(used/limit*100):0);
-  setTimeout(()=>{document.getElementById('progress-bar').style.width=pct+'%'},300);
-
-  // Expiry
-  if(expires&&expires!=='0'){
-    document.getElementById('expiry-row').style.display='flex';
-    document.getElementById('exp-date').textContent=expires;
-  }
-
-  // Ref link
-  const link='https://t.me/'+botname+'?start=ref_'+refcode;
-  const el=document.getElementById('ref-link');
-  el.textContent=link;el.dataset.link=link;
+function nav(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.getElementById('nav-' + name).classList.add('active');
+    const pg = document.getElementById('page-' + name);
+    pg.querySelectorAll('.fu').forEach(el => { el.style.animation = 'none'; el.offsetHeight; el.style.animation = '' });
+    pg.scrollTop = 0;
 }
 
-function copyRef(){
-  const link=document.getElementById('ref-link').dataset.link||document.getElementById('ref-link').textContent;
-  try{navigator.clipboard.writeText(link)}catch(e){const t=document.createElement('textarea');t.value=link;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t)}
-  const toast=document.getElementById('toast');
-  toast.classList.add('show');
-  setTimeout(()=>toast.classList.remove('show'),2000);
-  tg?.HapticFeedback?.notificationOccurred('success');
+function init() {
+    const user = tg?.initDataUnsafe?.user;
+    // Получаем данные из hash (#...)
+    const hash = window.location.hash.substring(1); // убираем первый символ #
+    console.log('Hash received:', hash); // <-- ДОБАВЬ ЭТО ДЛЯ ОТЛАДКИ
+
+    // Значения по умолчанию
+    let plan = 'free',
+        used = 0,
+        limit = 2,
+        refs = 0,
+        expires = '',
+        refcode = 'DEMO123',
+        botname = 'KlingBot',
+        photoUrl = '';
+
+    if (hash && hash.includes(':')) {
+        try {
+            // Разделяем строку. Нам нужно получить все элементы, а последний — это URL, который может содержать ":"
+            const parts = hash.split(':');
+            // Если у нас достаточно элементов для данных + URL
+            if (parts.length >= 7) {
+                plan = parts[0] || 'free';
+                used = parseInt(parts[1]) || 0;
+                limit = parseInt(parts[2]) || 2;
+                refs = parseInt(parts[3]) || 0;
+                expires = parts[4] || '';
+                refcode = parts[5] || 'DEMO123';
+                botname = parts[6] || 'KlingBot';
+                // Все, что после 7-го элемента (индекс 7) — это URL. Нужно декодировать и собрать обратно.
+                if (parts.length > 7) {
+                    photoUrl = decodeURIComponent(parts.slice(7).join(':'));
+                }
+            } else {
+                console.error('Hash format error: expected at least 7 parts, got', parts.length);
+            }
+        } catch (e) {
+            console.error('Error parsing hash:', e);
+        }
+    } else {
+        console.log('No hash or ":" found, using default demo data.');
+    }
+
+    // Заполняем имя пользователя
+    if (user) {
+        document.getElementById('user-name').textContent = (user.first_name || '') + (user.last_name ? ' ' + user.last_name : '');
+        document.getElementById('user-sub').textContent = 'ID: ' + user.id;
+    }
+
+    // Аватар
+    const face = document.getElementById('char-face');
+    face.style.padding = '0';
+    face.style.overflow = 'hidden';
+    face.innerHTML = ''; // очищаем
+
+    if (photoUrl && photoUrl.startsWith('http')) {
+        // Если есть фото из бота
+        face.innerHTML = `<img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
+    } else if (user && user.photo_url) {
+        // Если есть фото от Telegram
+        face.innerHTML = `<img src="${user.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
+    } else {
+        // Инициалы как запасной вариант
+        face.style.fontSize = '36px';
+        face.style.fontFamily = 'Unbounded, sans-serif';
+        face.style.fontWeight = '700';
+        face.style.display = 'flex';
+        face.style.alignItems = 'center';
+        face.style.justifyContent = 'center';
+        face.style.padding = '0';
+        const firstLetter = (user?.first_name || 'П')[0].toUpperCase();
+        face.textContent = firstLetter;
+    }
+
+    // План
+    const chip = document.getElementById('plan-chip');
+    const names = { free: '🆓 Free', basic: '⚡ Basic', pro: '🚀 Pro', unlimited: '♾️ Unlimited' };
+    const cls = { free: 'chip-free', basic: 'chip-basic', pro: 'chip-pro', unlimited: 'chip-unlimited' };
+    chip.textContent = names[plan] || names.free;
+    chip.className = 'plan-chip ' + (cls[plan] || cls.free);
+
+    // Статистика
+    const left = plan === 'unlimited' ? '∞' : Math.max(0, limit - used);
+    document.getElementById('gen-left').textContent = left;
+    document.getElementById('stat-limit').textContent = plan === 'unlimited' ? '∞' : limit;
+    document.getElementById('stat-used').textContent = used;
+    document.getElementById('stat-refs').textContent = refs;
+    document.getElementById('ref-count-badge').textContent = '+' + refs + ' ген.';
+
+    // Прогресс-бар
+    const pct = plan === 'unlimited' ? 100 : (limit > 0 ? Math.round(used / limit * 100) : 0);
+    setTimeout(() => { document.getElementById('progress-bar').style.width = pct + '%'; }, 300);
+
+    // Срок действия подписки
+    if (expires && expires !== '0') {
+        document.getElementById('expiry-row').style.display = 'flex';
+        document.getElementById('exp-date').textContent = expires;
+    }
+
+    // Реферальная ссылка
+    const link = 'https://t.me/' + botname + '?start=ref_' + refcode;
+    const el = document.getElementById('ref-link');
+    el.textContent = link;
+    el.dataset.link = link;
+}
+
+function copyRef() {
+    const link = document.getElementById('ref-link').dataset.link || document.getElementById('ref-link').textContent;
+    try { navigator.clipboard.writeText(link) } catch (e) {
+        const t = document.createElement('textarea');
+        t.value = link;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        document.body.removeChild(t);
+    }
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+    tg?.HapticFeedback?.notificationOccurred('success');
 }
 
 init();
