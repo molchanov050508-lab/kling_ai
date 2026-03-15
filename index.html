@@ -698,7 +698,7 @@ function init(){
     document.getElementById('char-face').textContent=emojis[user.id%emojis.length];
   }
 
-  const sp=tg?.initDataUnsafe?.start_param||'';
+  const sp=decodeURIComponent(window.location.hash.slice(1)||'');
   let plan='free',used=0,limit=2,refs=0,expires='',refcode='DEMO123',botname='KlingBot';
   if(sp&&sp.includes(':')){
     try{
