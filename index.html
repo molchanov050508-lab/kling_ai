@@ -397,9 +397,14 @@ function init() {
   const user = tg?.initDataUnsafe?.user;
   const hash = window.location.hash.substring(1);
 
-  if (hash && hash.includes(':')) {
+  // Формат: plan:used:limit:refs:expires:refcode:botname|{spinJSON}
+  const pipeIdx = hash.indexOf('|');
+  const profilePart = pipeIdx >= 0 ? hash.substring(0, pipeIdx) : hash;
+  const spinPart    = pipeIdx >= 0 ? decodeURIComponent(hash.substring(pipeIdx + 1)) : '';
+
+  if (profilePart && profilePart.includes(':')) {
     try {
-      const parts = hash.split(':');
+      const parts = profilePart.split(':');
       if (parts.length >= 7) {
         G.plan    = parts[0] || 'free';
         G.used    = parseInt(parts[1]) || 0;
@@ -408,10 +413,22 @@ function init() {
         G.expires = parts[4] || '';
         G.refcode = parts[5] || 'DEMO';
         G.botname = parts[6] || 'KlingBot';
-        G.spinSecsLeft = parseInt(parts[7]) || 0;
-        G.isAdmin = parts[8] === '1';
       }
     } catch(e) { console.error(e); }
+  }
+
+  if (spinPart) {
+    try {
+      const spinData = JSON.parse(spinPart);
+      G.spinSecsLeft = spinData.s || 0;
+      G.isAdmin      = spinData.a === 1;
+      if (Array.isArray(spinData.lb)) {
+        leaderboard = spinData.lb;
+        saveLeaderboard(leaderboard);
+      }
+    } catch(e) { console.error('spin parse error', e); }
+  } else {
+    leaderboard = loadLeaderboard();
   }
 
   // Имя пользователя
@@ -668,13 +685,11 @@ async function doSpin(isExtra) {
   if (!isExtra && !canSpin) { showToast('⏳ Подожди таймер!'); return; }
 
   if (isExtra) {
-    // Открываем бот с командой для покупки инвойса
-    const botname = G.botname || 'KlingBot';
-    try {
-      tg?.openTelegramLink?.('https://t.me/' + botname + '?start=spin_buy');
-    } catch(e) {
-      showToast('Открой @' + botname + ' в боте');
-    }
+    showToast('Переходите в бот для оплаты...');
+    setTimeout(() => {
+      try { tg?.openTelegramLink?.('https://t.me/' + G.botname + '?start=spin_buy'); } catch(e) {}
+      setTimeout(() => tg?.close?.(), 600);
+    }, 1200);
     return;
   }
 
