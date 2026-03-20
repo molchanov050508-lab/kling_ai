@@ -364,8 +364,21 @@ let G = {
   spinning:false
 };
 
-// Лидерборд (хранится в памяти сессии)
-let leaderboard = [];
+// ── Лидерборд (localStorage) ───────────────────────────────────────────────
+const LB_KEY = 'spin_leaderboard_v1';
+
+function loadLeaderboard() {
+  try {
+    const raw = localStorage.getItem(LB_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveLeaderboard(lb) {
+  try { localStorage.setItem(LB_KEY, JSON.stringify(lb)); } catch(e) {}
+}
+
+let leaderboard = loadLeaderboard();
 
 // ── Навигация ──────────────────────────────────────────────────────────────
 function nav(name) {
@@ -655,11 +668,12 @@ async function doSpin(isExtra) {
   if (!isExtra && !canSpin) { showToast('⏳ Подожди таймер!'); return; }
 
   if (isExtra) {
-    // Инвойс через бот
-    if (tg?.sendData) {
-      tg.sendData('spin_buy:10stars');
-    } else {
-      showToast('Открой бот для покупки');
+    // Открываем бот с командой для покупки инвойса
+    const botname = G.botname || 'KlingBot';
+    try {
+      tg?.openTelegramLink?.('https://t.me/' + botname + '?start=spin_buy');
+    } catch(e) {
+      showToast('Открой @' + botname + ' в боте');
     }
     return;
   }
@@ -703,6 +717,7 @@ async function doSpin(isExtra) {
       prize: prize
     });
     if (leaderboard.length > 10) leaderboard.pop();
+    saveLeaderboard(leaderboard);
     renderLeaderboard();
 
     // Обновляем лимит генераций
